@@ -21,7 +21,8 @@ This service implements a layered architecture with clear separation of concerns
 - **Data Layer**: JPA repositories with optimized queries
 - **Security Layer**: JWT authentication and authorization
 
-For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md).  
+For CI/CD pipeline information, see [CICD.md](./CICD.md).
 
 ## 🛠️ Technology Stack
 
