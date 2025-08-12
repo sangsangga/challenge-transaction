@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+  actions: read
+  checks: write
+  pull-requests: write
+
 env:
   JAVA_VERSION: '17'
   JAVA_DISTRIBUTION: 'temurin'
@@ -69,6 +75,9 @@ jobs:
         path: target/surefire-reports/*.xml
         reporter: java-junit
         fail-on-error: false
+        fail-on-empty: false
+        only-summary: false
+        max-annotations: 10
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
@@ -80,22 +89,56 @@ jobs:
           target/test-classes/
         retention-days: 30
 
-    - name: Display Test Summary
+    - name: Parse Test Results
       if: always()
       run: |
+        # Parse test results and create detailed summary
         echo "## 🧪 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
-        echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+        
         if [ -d "target/surefire-reports" ]; then
-          TEST_COUNT=$(find target/surefire-reports -name "TEST-*.xml" | wc -l)
-          echo "| Unit Tests | ✅ Passed | $TEST_COUNT test classes executed |" >> $GITHUB_STEP_SUMMARY
+          # Count tests
+          TEST_FILES=$(find target/surefire-reports -name "TEST-*.xml" | wc -l)
+          TOTAL_TESTS=0
+          FAILED_TESTS=0
+          
+          # Parse XML files for detailed results
+          for file in target/surefire-reports/TEST-*.xml; do
+            if [ -f "$file" ]; then
+              TESTS=$(grep -o 'tests="[^"]*"' "$file" | cut -d'"' -f2)
+              FAILURES=$(grep -o 'failures="[^"]*"' "$file" | cut -d'"' -f2)
+              ERRORS=$(grep -o 'errors="[^"]*"' "$file" | cut -d'"' -f2)
+              
+              TOTAL_TESTS=$((TOTAL_TESTS + TESTS))
+              FAILED_TESTS=$((FAILED_TESTS + FAILURES + ERRORS))
+              
+              CLASS_NAME=$(basename "$file" .xml | sed 's/TEST-//')
+              if [ $((FAILURES + ERRORS)) -eq 0 ]; then
+                echo "| $CLASS_NAME | ✅ Passed | $TESTS tests |" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "| $CLASS_NAME | ❌ Failed | $TESTS tests, $((FAILURES + ERRORS)) failed |" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Overall Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Tests**: $TOTAL_TESTS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Passed**: $((TOTAL_TESTS - FAILED_TESTS))" >> $GITHUB_STEP_SUMMARY
+          echo "- **Failed**: $FAILED_TESTS" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $FAILED_TESTS -eq 0 ]; then
+            echo "- **Status**: ✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ❌ Some tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "| Tests | ❌ Failed | No test reports found |" >> $GITHUB_STEP_SUMMARY
         fi
-        echo "| Integration Tests | ✅ Passed | Testcontainers with PostgreSQL & Kafka |" >> $GITHUB_STEP_SUMMARY
-        echo "| Database | ✅ Ready | PostgreSQL 15 container |" >> $GITHUB_STEP_SUMMARY
-        echo "| Build | ✅ Success | Maven compilation successful |" >> $GITHUB_STEP_SUMMARY
+        
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📊 Test Details" >> $GITHUB_STEP_SUMMARY
-        echo "- **FxRateServiceTest**: External API mocking and currency conversion" >> $GITHUB_STEP_SUMMARY
-        echo "- **TransactionConsumerTest**: Kafka message consumption with embedded broker" >> $GITHUB_STEP_SUMMARY
-        echo "- **ChallengeApplicationTests**: Spring Boot context loading and configuration" >> $GITHUB_STEP_SUMMARY
+        echo "### 🏗️ Infrastructure" >> $GITHUB_STEP_SUMMARY
+        echo "- **Database**: PostgreSQL 15 container" >> $GITHUB_STEP_SUMMARY
+        echo "- **Java**: OpenJDK 17 (Temurin)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Tool**: Maven with dependency caching" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Framework**: JUnit 5 + Testcontainers" >> $GITHUB_STEP_SUMMARY
