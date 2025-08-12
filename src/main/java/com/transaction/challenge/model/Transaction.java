@@ -27,7 +27,6 @@ public class Transaction extends BaseEntity {
     private BigDecimal amount;
     private LocalDate valueDate;
     private String description;
-    @Column(name = "month_key", insertable = false, updatable = false)
     private LocalDate monthKey;
 
     @Enumerated(EnumType.STRING)
