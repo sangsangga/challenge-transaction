@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:txn}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
+    hikari:
+      pool-name: ${DB_POOL_NAME:txn-pool}
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:600000}
+      connection-timeout: ${DB_POOL_CONN_TIMEOUT_MS:30000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
+  jpa:
+    hibernate.ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ISSUER_URI:https://url}
+
+app:
+  base-currency: ${BASE_CURRENCY:IDR}
+  fx:
+    rate:
+      base-url: ${FX_API_URL:https://api.exchangerate.host} 
+      api-key: ${FX_API_KEY:4076a33e835df4772bf63677dc7c8be2}
+    ttl-seconds: 60
+security:
+  audience: transactions-api

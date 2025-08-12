@@ -1,0 +1,46 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: txn-db
+    environment:
+      POSTGRES_DB: txn
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: txn-kafka
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@txn-kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    ports:
+      - "9092:9092"
+  app:
+    image: txn-svc:local
+    build: .
+    container_name: txn-app
+    depends_on:
+      - db
+      - kafka
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: txn
+      DB_USER: postgres
+      DB_PASS: postgres
+      KAFKA_BOOTSTRAP: kafka:9092
+      FX_API_URL: https://api.exchangerate.host
+      BASE_CURRENCY: IDR
+    ports:
+      - "8080:8080"
+
+
